@@ -1,0 +1,22 @@
+; systemd --user unit. Copy to ~/.config/systemd/user/powerpal-daemon.service,
+; fix the two paths below, then:
+;
+;   systemctl --user daemon-reload
+;   systemctl --user enable --now powerpal-daemon.service
+;   loginctl enable-linger $USER   # so it also runs when you're logged out
+;
+; Logs: journalctl --user -u powerpal-daemon -f
+
+[Unit]
+Description=Powerpal BLE to MQTT bridge for Home Assistant
+After=bluetooth.target network-online.target
+Wants=bluetooth.target
+
+[Service]
+Type=simple
+ExecStart=/path/to/powerpal-deamon/.venv/bin/python -u /path/to/powerpal-deamon/daemon.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
