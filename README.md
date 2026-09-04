@@ -58,12 +58,17 @@ journalctl --user -u powerpal-daemon -f   # logs
 
 ## What you get in Home Assistant
 
-Three sensors auto-created via MQTT discovery, named after the device address:
+Three sensors auto-created via MQTT discovery, all under one "Powerpal" device:
 
-- `sensor.powerpal_<addr>_power` -- W, live, updates on every meter pulse
-- `sensor.powerpal_<addr>_energy` -- kWh, lifetime total (`total_increasing`,
+- `sensor.powerpal_power` -- W, live, updates on every meter pulse
+- `sensor.powerpal_energy` -- kWh, lifetime total (`total_increasing`,
   add it to **Settings -> Dashboards -> Energy**)
-- `sensor.powerpal_<addr>_battery` -- %
+- `sensor.powerpal_battery` -- %
+
+Entity IDs are fixed (not derived from the device's Bluetooth address), so
+they stay stable across re-pairing. This assumes one Powerpal per broker --
+running a second one against the same broker will collide on these entity
+IDs.
 
 The lifetime energy total is persisted to the `state.file` path in
 `config.ini` and survives daemon restarts.
@@ -77,4 +82,4 @@ it holds credentials.
 
 ## License
 
-MIT (or add your own).
+[MIT](LICENSE)
