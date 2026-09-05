@@ -13,6 +13,9 @@ def _u(short: str) -> str:
     return f"59da{short}-12f4-25a6-7d4f-55961dce4205"
 
 CH_MEASUREMENT      = _u("0001")   # notify/read  20B: u32le ts + u16le pulses_in_minute + 14B opaque
+CH_MEASUREMENT_ACCESS = _u("0002") # write/indicate  write u32le start_ts + u32le end_ts to replay
+                                    # historic minute records (same 20B format) as a burst of
+                                    # CH_MEASUREMENT notifications; see PROTOCOL.md
 CH_PULSE            = _u("0003")   # notify/read  u32le ms between the last two pulses
 CH_FIRST_REC        = _u("0005")   # read         u32le first_ts + u32le last_ts
 CH_SERIAL           = _u("0010")   # read         u32le device id

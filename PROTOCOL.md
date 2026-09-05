@@ -21,7 +21,7 @@ Vendor service **`59daABCD-12F4-25A6-7D4F-55961DCE4205`**:
 | UUID | name | access | payload |
 |---|---|---|---|
 | `59da0001` | measurement | notify, read | 20 B: `u32le ts` + `u16le pulses_in_minute` + 14 B opaque |
-| `59da0002` | measurementAccess | write, indicate | request historic minute-records |
+| `59da0002` | measurementAccess | write, indicate | write `u32le start_ts` + `u32le end_ts` to replay historic minute-records (see below) |
 | `59da0003` | pulse | notify, read | `u32le` ms between the last two pulses |
 | `59da0004` | time | notify, read, write | `u32le` device RTC (unix) |
 | `59da0005` | firstRec | read | `u32le first_record_ts` + `u32le last_record_ts` |
@@ -68,6 +68,37 @@ BLE, so you must configure it.
   Bytes 6..20 of the record are constant over a short capture (looks like a
   tariff fixed-point + a static signature); not needed for power/energy and
   ignored here, same as every known third-party implementation.
+
+## Historic records
+
+The device buffers a rolling window of past minute-records (about 2 months in
+testing -- see `59da0005` firstRec for the currently available range) and can
+replay them on demand instead of only streaming live:
+
+1. Read `59da0005` (firstRec) to get `first_ts`/`last_ts` (both `u32le` unix
+   seconds), the range currently buffered on the device.
+2. Subscribe to notifications on `59da0001` (measurement) as usual.
+3. Write `u32le start_ts` + `u32le end_ts` (8 bytes total, write-with-response)
+   to `59da0002` (measurementAccess).
+4. The device replays every minute-record between `start_ts` and `end_ts` as a
+   burst of ordinary `59da0001` notifications, in the same 20-byte format as
+   live data, at BLE-connection-interval speed (verified: >4000 records in
+   ~30s, one record per minute of wall-clock history, no gaps, no duplicates).
+
+Notes from testing:
+- Writing only `start_ts` (4 bytes) does nothing -- both bounds are required.
+- `59da0002` never itself indicates anything (no explicit "done" signal); detect
+  completion by watching for a record whose `ts` reaches your requested `end_ts`,
+  or an idle timeout if the stream stalls.
+- Once started, further writes to `59da0002` (tried `0x01`, restarting from
+  `ts=0`, re-sending `start_ts` as a write-without-response) did not restart or
+  interrupt an in-flight replay.
+- Replayed records are indistinguishable on the wire from live ones -- a
+  consumer has to track "have I seen this `ts` already" itself if it also has
+  a live subscription running concurrently.
+
+See `backfill_historic.py` for a working implementation that uses this to
+recompute the daemon's lifetime energy total from device history.
 
 ## Cloud API
 

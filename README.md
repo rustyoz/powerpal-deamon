@@ -73,6 +73,25 @@ IDs.
 The lifetime energy total is persisted to the `state.file` path in
 `config.ini` and survives daemon restarts.
 
+## Backfilling history
+
+The Powerpal buffers a rolling window of past minute-records (around 2
+months). `backfill_historic.py` pulls that buffer over BLE and recomputes the
+daemon's lifetime energy total from it, so a fresh setup doesn't start the
+Energy Dashboard total at zero:
+
+```sh
+systemctl --user stop powerpal-daemon.service   # frees the BLE link
+./.venv/bin/python backfill_historic.py         # dry run: reports the total, writes nothing
+./.venv/bin/python backfill_historic.py --apply --mqtt
+systemctl --user start powerpal-daemon.service
+```
+
+This corrects the lifetime total baseline going forward; it can't back-date
+the Energy Dashboard's history graph itself (MQTT sensor states are only ever
+"now"). See [PROTOCOL.md](PROTOCOL.md#historic-records) for how the historic
+replay request works.
+
 ## Configuration
 
 See [config.example.ini](config.example.ini) for the full set of options
